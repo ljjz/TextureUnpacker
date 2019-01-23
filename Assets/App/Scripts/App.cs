@@ -10,9 +10,9 @@ namespace NRatel.TextureUnpacker
     {
         private enum UnpackMode
         {
-            JustSplit = 0,
+            All = 0,
             Restore = 1,
-            All = 2
+            JustSplit = 2
         }
         private UnpackMode currentUnpackMode;
 
@@ -25,7 +25,7 @@ namespace NRatel.TextureUnpacker
         private Plist plist;
         private Texture2D bigTexture;
         private Core core;
-
+        ArrayList AL = new ArrayList();
         public App(Main main)
         {
             this.main = main;
@@ -33,15 +33,31 @@ namespace NRatel.TextureUnpacker
             currentUnpackMode = (UnpackMode)appUI.m_Dropdown_SelectMode.value;
 
             //编辑器下测试用
-#if UNITY_EDITOR
-            plistFilePath = @"C:\Users\Administrator\Desktop\plist&png\test.plist";
-            pngFilePath = @"C:\Users\Administrator\Desktop\plist&png\test.png";
-            main.StartCoroutine(LoadFiles());
-#endif
+//#if UNITY_EDITOR
+//            plistFilePath = @"F:\assets\Art\Monster\mon_058.plist";
+//            pngFilePath = @"F:\assets\Art\Monster\mon_058.pvr.ccz";
+//            main.StartCoroutine(LoadFiles());
+//#endif
 
             RegisterEvents();
         }
+        void GetAllFileByDir(string DirPath, ref ArrayList AL)
+        {
+            //C#枚举文件的代码实现
+            //列举出所有文件,添加到AL  
 
+            foreach (string file in Directory.GetFiles(DirPath))
+            {
+                if(file.IndexOf(".plist") != -1)
+                    AL.Add(file);
+            }
+                
+
+            //列举出所有子文件夹,并对之调用GetAllFileByDir自己;  
+            //C#枚举文件的代码实现
+            foreach (string dir in Directory.GetDirectories(DirPath))
+                GetAllFileByDir(dir, ref AL);
+        }
         private void RegisterEvents()
         {
             main.GetComponent<FilesOrFolderDragInto>().AddEventListener((List<string> aPathNames) =>
@@ -66,8 +82,13 @@ namespace NRatel.TextureUnpacker
                         pngFilePath = Path.GetDirectoryName(path) + @"\" + Path.GetFileNameWithoutExtension(path) + ".png";
                         if (!File.Exists(pngFilePath))
                         {
-                            appUI.SetTip("不存在与当前plist文件同名的png文件");
-                            return;
+                            pngFilePath = Path.GetDirectoryName(path) + @"\" + Path.GetFileNameWithoutExtension(path) + ".pvr.png";
+                            if (!File.Exists(pngFilePath))
+                            {
+                                appUI.SetTip("不存在与当前plist文件同名的png或pvr文件");
+                                return;
+                            }
+                           
                         }
                     }
                     else if (path.EndsWith(".png"))
@@ -100,7 +121,18 @@ namespace NRatel.TextureUnpacker
 
                 if (loader == null || plist == null)
                 {
-                    appUI.SetTip("没有指定可执行的plist&png");
+                    string aPath = appUI.GetInput();
+                    if(aPath.Length <= 3)
+                    {
+                        appUI.SetTip("没有指定可执行的plist&png");
+                        return;
+                    }
+                   
+                    AL.Clear();
+                    GetAllFileByDir(aPath, ref AL);
+                    isExecuting = true;
+                    core = new Core(this);
+                    main.StartCoroutine(LoadAllFile());
                     return;
                 }
 
@@ -115,7 +147,66 @@ namespace NRatel.TextureUnpacker
                 currentUnpackMode = (UnpackMode)value;
             });
         }
+        private IEnumerator LoadAllFile()
+        {
+            foreach(string aPath in AL)
+            {
+                plistFilePath = aPath;
+                string outdir = GetSaveDir();
+                if (Directory.Exists(outdir))
+                {
+                    continue;
+                }
+                    pngFilePath = Path.GetDirectoryName(aPath) + @"\" + Path.GetFileNameWithoutExtension(aPath) + ".png";
+                if (!File.Exists(pngFilePath))
+                {
+                    pngFilePath = Path.GetDirectoryName(aPath) + @"\" + Path.GetFileNameWithoutExtension(aPath) + ".pvr.png";
+                    if (!File.Exists(pngFilePath))
+                    {
+                        appUI.SetTip("不存在与当前plist文件同名的png或pvr文件");
+                        continue;
+                    }
 
+                }
+                loader = Loader.LookingForLoader(plistFilePath);
+                if (loader != null)
+                {
+                    plist = loader.LoadPlist(plistFilePath);
+                    bigTexture = loader.LoadTexture(pngFilePath, plist.metadata);
+                    appUI.SetImage(bigTexture);
+                    int total = plist.frames.Count;
+                    int count = 0;
+                    foreach (var frame in plist.frames)
+                    {
+                        try
+                        {
+                            if (currentUnpackMode == UnpackMode.JustSplit)
+                            {
+                                core.JustSplit(bigTexture, frame);
+                            }
+                            else if (currentUnpackMode == UnpackMode.Restore)
+                            {
+                                core.Restore(bigTexture, frame);
+                            }
+                            else if (currentUnpackMode == UnpackMode.All)
+                            {
+                                core.JustSplit(bigTexture, frame);
+                                core.Restore(bigTexture, frame);
+                            }
+                            count += 1;
+                            appUI.SetTip("进度：" + count + "/" + total + (count >= total ? "\n已完成！" : ""), false);
+                        }
+                        catch
+                        {
+                            appUI.SetTip("出错了!!!\n请联系作者\n↓");
+                        }
+                    }
+                }
+            }
+            appUI.SetTip("所有任务完成\n");
+            isExecuting = false;
+            yield return null;
+        }
         private IEnumerator LoadFiles()
         {
             try

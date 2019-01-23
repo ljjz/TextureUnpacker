@@ -13,12 +13,13 @@ namespace NRatel.TextureUnpacker
         public Button m_Btn_Excute;
         public Dropdown m_Dropdown_SelectMode;
         public Button m_Btn_ContactMe;
-
+        public InputField m_Text_Path;
         public AppUI Init()
         {
             this.m_Go_BigImageBg.gameObject.SetActive(false);
             this.m_Text_Tip.gameObject.SetActive(false);
             this.RegisterEvents();
+            string a = GetInput();
             return this;
         }
 
@@ -29,6 +30,10 @@ namespace NRatel.TextureUnpacker
             });
         }
 
+        public string GetInput()
+        {
+           return m_Text_Path.text;
+        }
         public void SetTip(string str, bool isError = true)
         {
             this.m_Text_Tip.gameObject.SetActive(true);

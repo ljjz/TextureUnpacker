@@ -11,7 +11,8 @@ namespace NRatel.TextureUnpacker
             SizeInt size = new SizeInt(Util.StringToRectInt(pd["sourceColorRect"].AsString()).size);
             SizeInt sourceSize = Util.StringToSizeInt(pd["sourceSize"].AsString());
             bool isRotated = pd["rotated"].AsBoolean();
-            Vector2Int offset = Util.StringToVector2Int(pd["offset"].AsString());
+            string strOffset = pd["offset"].AsString();
+            Vector2Int offset = Util.StringToVector2Int(strOffset);
 
             return new Frame(textureName, startPos, size, sourceSize, isRotated, offset);
         }

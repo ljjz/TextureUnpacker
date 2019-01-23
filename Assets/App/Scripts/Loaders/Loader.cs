@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Text.RegularExpressions;
 using System.IO;
 using NRatel.TextureUnpacker.PlistParser;
+using System;
 
 namespace NRatel.TextureUnpacker
 {
@@ -12,7 +13,15 @@ namespace NRatel.TextureUnpacker
         {
             Loader loader = null;
             PlistDocument pd = new PlistDocument();
-            pd.ReadFromFile(path);
+            try
+            {
+                pd.ReadFromFile(path);
+            }
+            catch
+            {
+                return null;
+            }
+
 
             try
             {
@@ -80,7 +89,9 @@ namespace NRatel.TextureUnpacker
             s = s.Replace(" ", "");
             s = s.Substring(1, s.Length - 2);
             string[] v2is = s.Split(',');
-            return new Vector2Int(int.Parse(v2is[0]), int.Parse(v2is[1]));
+            float x = float.Parse(v2is[0]);
+            float y = float.Parse(v2is[1]);
+            return new Vector2Int((int)x, (int)y);
         }
 
         static public SizeInt StringToSizeInt(string s)
